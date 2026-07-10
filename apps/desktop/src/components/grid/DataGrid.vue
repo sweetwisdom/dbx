@@ -156,6 +156,7 @@ import { useQueryStore } from "@/stores/queryStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { DataGridSortDirection, DataGridSortMode } from "@/lib/dataGrid/dataGridSort";
 import { getTableMetadataCapabilities } from "@/lib/table/tableMetadataCapabilities";
+import { getTableStructureCapabilities } from "@/lib/table/tableStructureCapabilities";
 import { supportsTableStructureEditing } from "@/lib/database/databaseCapabilities";
 import { forgetDataGridConditionHistory, loadDataGridConditionHistory, rememberDataGridConditionHistory } from "@/lib/dataGrid/dataGridConditionHistory";
 import { getDataGridConditionSuggestionPosition } from "@/lib/dataGrid/dataGridConditionSuggestionPosition";
@@ -346,7 +347,9 @@ const columnTypeMap = computed(() => {
   }
   return map;
 });
-const resolvedDatabaseType = computed(() => props.databaseType ?? effectiveDatabaseTypeForConnection(connectionStore.getConfig(props.connectionId ?? "")));
+const resolvedConnectionConfig = computed(() => connectionStore.getConfig(props.connectionId ?? ""));
+const resolvedDatabaseType = computed(() => props.databaseType ?? effectiveDatabaseTypeForConnection(resolvedConnectionConfig.value));
+const tableStructureCapabilities = computed(() => getTableStructureCapabilities(resolvedDatabaseType.value, resolvedConnectionConfig.value?.db_type));
 
 const columnCommentMap = computed(() => {
   const map = new Map<string, string>();
@@ -7467,6 +7470,7 @@ async function copyHeaderColumn() {
 
 const canCopyAlterColumnSql = computed(() => {
   if (!contextHeaderColumn.value || !props.tableMeta?.columns) return false;
+  if (tableStructureCapabilities.value.alterStrategy !== "direct") return false;
   return props.tableMeta.columns.some((c) => c.name.toLowerCase() === contextHeaderColumn.value!.toLowerCase());
 });
 
@@ -7825,7 +7829,7 @@ function toggleCellDetailPanelLayout() {
 
 const tableMetadataCapabilities = computed(() => getTableMetadataCapabilities(props.databaseType));
 const canOpenTableStructureEditor = computed(() => !!props.connectionId && !!props.database && !!props.tableMeta?.tableName && supportsTableStructureEditing(resolvedDatabaseType.value));
-const mongoConnectionConfig = computed(() => connectionStore.getConfig(props.connectionId ?? ""));
+const mongoConnectionConfig = resolvedConnectionConfig;
 const canManageMongoIndexes = computed(() => resolvedDatabaseType.value === "mongodb" && !!props.connectionId && !!props.database && !!props.tableMeta?.tableName && mongoConnectionConfig.value?.db_type === "mongodb" && mongoConnectionConfig.value?.driver_profile !== "mongodb-legacy");
 const tableInfoTabs = computed(() => {
   const tabs: TableInfoTabItem[] = [];
