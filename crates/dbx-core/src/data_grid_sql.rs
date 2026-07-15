@@ -4669,6 +4669,33 @@ mod tests {
     }
 
     #[test]
+    fn prepare_data_grid_save_omits_empty_kingbase_sqlserver_identity_value() {
+        let result = prepare_data_grid_save(DataGridSaveStatementOptions {
+            database_type: Some(DatabaseType::Kingbase),
+            table_meta: DataGridTableMeta {
+                catalog: None,
+                database: None,
+                schema: Some("dbo".to_string()),
+                table_name: "orders".to_string(),
+                primary_keys: vec!["id".to_string()],
+                columns: Some(vec![
+                    pk_column("id", "int", false, Some("identity(1,1)")),
+                    column("name", "varchar", false, None),
+                ]),
+            },
+            columns: vec!["id".to_string(), "name".to_string()],
+            source_columns: None,
+            rows: vec![],
+            dirty_rows: vec![],
+            deleted_rows: vec![],
+            new_rows: vec![vec![Value::Null, json!("Ada")]],
+        });
+
+        assert_eq!(result.validation_error, None);
+        assert_eq!(result.statements, vec![r#"INSERT INTO "dbo"."orders" ("name") VALUES ('Ada');"#]);
+    }
+
+    #[test]
     fn prepare_data_grid_save_still_validates_other_not_null_columns_in_sqlite() {
         let result = prepare_data_grid_save(DataGridSaveStatementOptions {
             database_type: Some(DatabaseType::Sqlite),
